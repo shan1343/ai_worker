@@ -1,7 +1,12 @@
+name: ai_worker_webcam
+
 services:
-  ai_worker:
-    container_name: ai_worker
-    image: robotis/ai-worker:1.3.0
+  ai_worker_webcam:
+    container_name: ai_worker_webcam
+    image: robotis/ai-worker:1.3.0-webcam
+    build:
+      context: ..
+      dockerfile: ${AI_WORKER_DOCKERFILE:-docker/Dockerfile.webcam}
     tty: true
     restart: always
     cap_add:
@@ -24,5 +29,5 @@ services:
       - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
       - ./workspace:/workspace
       - ../:/root/ros2_ws/src/ai_worker/
-      - /var/run/robotis/agent_sockets/ai_worker:/var/run/agent
+      - /var/run/robotis/agent_sockets/ai_worker_webcam:/var/run/agent
     privileged: true

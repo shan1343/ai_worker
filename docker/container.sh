@@ -2,9 +2,21 @@
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-CONTAINER_NAME="ai_worker"
+CONTAINER_NAME="ai_worker_webcam"
+IMAGE_NAME="robotis/ai-worker:1.3.0-webcam"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-ai_worker_webcam}"
 GITHUB_RELEASES_API="https://api.github.com/repos/ROBOTIS-GIT/ai_worker/releases/latest"
 META_PACKAGE_XML="${SCRIPT_DIR}/../ffw/package.xml"
+
+detect_dockerfile() {
+    echo "docker/Dockerfile.webcam"
+}
+
+compose() {
+    export COMPOSE_PROJECT_NAME
+    export AI_WORKER_DOCKERFILE="${AI_WORKER_DOCKERFILE:-$(detect_dockerfile)}"
+    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" "$@"
+}
 
 # Function to display help
 show_help() {
@@ -12,14 +24,22 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  help                    Show this help message"
+    echo "  build                   Build the webcam-specific Docker image"
     echo "  start                   Start the container"
     echo "  enter                   Enter the running container"
     echo "  stop                    Stop the container"
     echo ""
     echo "Examples:"
+    echo "  $0 build                Build image"
     echo "  $0 start                Start container"
     echo "  $0 enter                Enter the running container"
     echo "  $0 stop                 Stop the container"
+}
+
+# Function to build the webcam image
+build_image() {
+    echo "Building ${IMAGE_NAME} with ${AI_WORKER_DOCKERFILE:-$(detect_dockerfile)}..."
+    compose build
 }
 
 # Function to start the container
@@ -32,7 +52,7 @@ start_container() {
         echo "Warning: DISPLAY environment variable is not set. X11 forwarding will not be available."
     fi
 
-    echo "Starting ai_worker container..."
+    echo "Starting ${CONTAINER_NAME} container..."
     # Notify if an update is available (meta package version vs GitHub latest release)
     CURRENT_VER=$(get_current_version)
     LATEST_VER=$(get_latest_version)
@@ -50,11 +70,15 @@ start_container() {
     sudo udevadm control --reload-rules
     sudo udevadm trigger
 
-    # Pull the latest images
-    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" pull
+    if ! docker image inspect "${IMAGE_NAME}" >/dev/null 2>&1; then
+        echo "Image ${IMAGE_NAME} was not found locally."
+        build_image
+    else
+        echo "Using existing image ${IMAGE_NAME}."
+    fi
 
     # Run docker-compose
-    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" up -d
+    compose up -d
 }
 
 # Function to enter the container
@@ -93,7 +117,7 @@ stop_container() {
     read -p "Are you sure you want to continue? [y/N] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        docker compose -f "${SCRIPT_DIR}/docker-compose.yml" down
+        compose down
     else
         echo "Operation cancelled."
         exit 0
@@ -160,6 +184,9 @@ update_available() {
 case "$1" in
     "help")
         show_help
+        ;;
+    "build")
+        build_image
         ;;
     "start")
         start_container

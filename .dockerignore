@@ -1,0 +1,11 @@
+.git
+.agents
+.claude
+.codex
+build
+install
+log
+docker/workspace
+docker/my_xauth
+**/__pycache__
+**/*.pyc

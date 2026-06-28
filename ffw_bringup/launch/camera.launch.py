@@ -20,12 +20,15 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
     bringup_launch_dir = os.path.join(get_package_share_directory('ffw_bringup'), 'launch')
+    launch_webcam = LaunchConfiguration('launch_webcam')
 
     camera_zed = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(bringup_launch_dir, 'camera_zed.launch.py')),
@@ -35,8 +38,16 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(bringup_launch_dir,
                                                    'camera_realsense.launch.py'))
     )
+    camera_webcam = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(bringup_launch_dir,
+                                                   'camera_webcam.launch.py')),
+        condition=IfCondition(launch_webcam)
+    )
 
     return LaunchDescription([
+        DeclareLaunchArgument('launch_webcam', default_value='true',
+                              description='Whether to launch the C920 webcam.'),
         camera_zed,
         TimerAction(period=10.0, actions=[camera_realsense]),
+        TimerAction(period=12.0, actions=[camera_webcam]),
     ])
